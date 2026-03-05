@@ -1,0 +1,618 @@
+{
+  "name": "clara-onboarding-automation",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        0
+      ],
+      "id": "33d2c1a9-d8a9-4427-9ac4-0edae1e5b359",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/home/node/files/inputs/demo_calls/transcripts/*.txt",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -16,
+        0
+      ],
+      "id": "c7b2fd4b-50ba-437e-9877-9632fa18d79f",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "destinationKey": "transcript",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        192,
+        0
+      ],
+      "id": "95d24297-d139-4381-b316-54c18187dd65",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const transcript = ($json.transcript || \"\").toLowerCase();\n\n// get filename from previous node\nconst fileName = ($node[\"Read/Write Files from Disk\"].json.fileName || \"\").toLowerCase();\n\n// detect call type\nconst call_type = fileName.includes(\"onboarding\") ? \"onboarding\" : \"demo\";\n\n// extract account id\nconst account_id = fileName.split(\"_\")[0] || \"unknown\";\n\nreturn {\n  transcript,\n  call_type,\n  account_id,\n  file_name: fileName\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        0
+      ],
+      "id": "83b322a8-c8ca-404b-978d-df69f5aa5740",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "const transcript = $json.text || $json.transcript || \"\";\n\nconst account_id = $json.account_id;\nconst file_name = $json.file_name;\n\nreturn [{\n  account_id,\n  file_name,\n  transcript,\n  company_name: \"\",\n  business_hours: \"\",\n  services_supported: [],\n  emergency_definition: [],\n  notes: transcript.substring(0,200)\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "02498adb-21f7-49bd-a015-1352be63b7dd",
+      "name": "Extract Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "const memo = {\n  account_id: $json.account_id,\n  company_name: $json.company_name || \"\",\n  business_hours: \"\",\n  office_address: \"\",\n  services_supported: [],\n  emergency_definition: [],\n  emergency_routing_rules: \"\",\n  non_emergency_routing_rules: \"\",\n  call_transfer_rules: \"\",\n  integration_constraints: \"\",\n  after_hours_flow_summary: \"\",\n  office_hours_flow_summary: \"\",\n  questions_or_unknowns: [\n    \"Business hours not specified\",\n    \"Emergency routing unclear\"\n  ],\n  notes: $json.notes,\n  version: \"v1\"\n};\n\nreturn [{\n  ...$json,\n  memo\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        16
+      ],
+      "id": "d02eb560-e2d6-4577-99d9-d4d8d50d556f",
+      "name": "Generate Memo JSON"
+    },
+    {
+      "parameters": {
+        "jsCode": "const agent = {\n  agent_name: `Clara - ${$json.account_id}`,\n  voice_style: \"professional\",\n  version: \"v1\",\n\n  system_prompt: `\nYou are Clara, an AI phone assistant.\n\nDuring business hours:\n- greet caller\n- ask purpose\n- collect name and phone number\n- route call if needed\n- if transfer fails, apologize and promise follow-up\n- ask if they need anything else\n- close call\n\nAfter hours:\n- greet caller\n- ask purpose\n- determine if emergency\n- if emergency collect name, number, address immediately\n- attempt transfer\n- if transfer fails assure follow-up\n- if non-emergency collect message for next business day\n- close call\n`,\n\n  fallback_protocol: \"If transfer fails after 60 seconds notify dispatch.\",\n  call_transfer_protocol: \"Transfer to service desk if emergency\"\n};\n\nreturn [{\n  ...$json,\n  agent_spec: agent\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        2656
+      ],
+      "id": "26ba864c-9414-4e27-9a1b-e46da7b5eb06",
+      "name": "Generate Agent Spec",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/home/node/files/outputs/accounts/{{$json.account_id}}/v1/memo.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1328,
+        192
+      ],
+      "id": "517aa704-1893-4336-8814-5a6f74784fc9",
+      "name": "Read/Write Files from Disk1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = Buffer.from(JSON.stringify($json.agent_spec, null, 2));\n\nreturn [\n{\n  binary: {\n    data: {\n      data,\n      mimeType: \"application/json\",\n      fileName: \"agent_spec.json\"\n    }\n  },\n  json: $json\n}\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        192
+      ],
+      "id": "7d78bd8d-1c1e-4280-89c6-644f0b6d36b6",
+      "name": "Prepare Agent File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/home/node/files/outputs/accounts/{{$json.account_id}}/v1/agent_spec.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1936,
+        32
+      ],
+      "id": "52b0ed4f-defb-4688-88c6-40ea38689590",
+      "name": "Read/Write Files from Disk2"
+    },
+    {
+      "parameters": {
+        "fileSelector": "=/home/node/files/outputs/accounts/{{$json.account_id}}/v1/memo.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        2224,
+        32
+      ],
+      "id": "eacae242-a44d-4ab4-8439-797e7b2df643",
+      "name": "Read/Write Files from Disk3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const memoText = $json.data;\n\nconst memo_v1 = JSON.parse(memoText);\n\nreturn [\n{\n  json: {\n    ...$json,\n    memo_v1\n  }\n}\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2672,
+        16
+      ],
+      "id": "00c02ea3-8ec3-4d00-9376-b67c984047b0",
+      "name": "Parse Memo v1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const transcript = ($json.transcript || \"\").toLowerCase();\n\nlet updates = {\n  business_hours: \"\",\n  services_supported: [],\n  emergency_definition: []\n};\n\n// Example rule extraction\nif (transcript.includes(\"24/7\") || transcript.includes(\"24 hours\")) {\n  updates.business_hours = \"24/7\";\n}\n\nif (transcript.includes(\"inspection\")) {\n  updates.services_supported.push(\"inspection\");\n}\n\nif (transcript.includes(\"fire alarm\")) {\n  updates.emergency_definition.push(\"fire alarm trigger\");\n}\n\nif (transcript.includes(\"sprinkler\")) {\n  updates.emergency_definition.push(\"sprinkler leak\");\n}\n\nreturn [\n{\n  ...$json,\n  updates\n}\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2912,
+        16
+      ],
+      "id": "32dd97f9-12f8-4c49-81f1-06872207aae0",
+      "name": "Extract Onboarding Updates"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        2432,
+        32
+      ],
+      "id": "718b99f6-ce51-4d0b-bfc9-f3de063cfb63",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const memo_v1 = $json.memo_v1;\nconst updates = $json.updates;\n\nconst memo_v2 = {\n  ...memo_v1,\n  ...updates,\n  version: \"v2\",\n  updated_at: new Date().toISOString()\n};\n\nreturn [\n{\n  ...$json,\n  memo_v2\n}\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        16
+      ],
+      "id": "8134dbfa-b95e-41b8-8f59-541a23ebf043",
+      "name": "Create Memo v2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const agent_spec_v2 = {\n  agent_name: `Clara - ${$json.account_id}`,\n  version: \"v2\",\n  voice_style: \"professional\",\n\n  system_prompt: `\nYou are Clara, an AI phone assistant.\n\nBusiness hours: ${$json.memo_v2.business_hours}\n\nEmergency definitions:\n${$json.memo_v2.emergency_definition.join(\", \")}\n\nServices supported:\n${$json.memo_v2.services_supported.join(\", \")}\n\nDuring business hours:\n- greet caller\n- ask reason for call\n- collect name and phone number\n- transfer if needed\n\nAfter hours:\n- determine if emergency\n- collect caller details\n- attempt transfer or schedule follow-up\n`\n};\n\nreturn [\n{\n  ...$json,\n  agent_spec_v2\n}\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3328,
+        16
+      ],
+      "id": "e5ccdb5b-7334-4153-a82e-2893fed37d2f",
+      "name": "Generate Agent Spec v2"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/home/node/files/outputs/accounts/bens/v2/memo.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        3744,
+        16
+      ],
+      "id": "dfbaba3c-fb8f-4900-91e8-5d6d7f9dc1ba",
+      "name": "Read/Write Files from Disk4"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = Buffer.from(JSON.stringify($json.agent_spec_v2, null, 2));\n\nreturn [{\n  binary: {\n    data: {\n      data,\n      mimeType: \"application/json\",\n      fileName: \"agent_spec.json\"\n    }\n  },\n  json: $json\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3952,
+        16
+      ],
+      "id": "6fe0103e-2ad8-4e13-87ae-b90a9f1c9524",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = Buffer.from(JSON.stringify($json.memo_v2, null, 2));\n\nreturn [{\n  binary: {\n    data: {\n      data,\n      mimeType: \"application/json\",\n      fileName: \"memo.json\"\n    }\n  },\n  json: $json\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3536,
+        16
+      ],
+      "id": "07738563-44dc-444d-abb9-1dec42e92cd6",
+      "name": "Save Memo v2"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/home/node/files/outputs/accounts/bens/v2/agent_spec.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        4160,
+        16
+      ],
+      "id": "e92a385c-204a-4d14-b136-29aaa4e43521",
+      "name": "Read/Write Files from Disk5"
+    },
+    {
+      "parameters": {
+        "jsCode": "const memo_v1 = $json.memo_v1 || {};\nconst memo_v2 = $json.memo_v2 || {};\n\nlet changes = [];\n\nif (memo_v1.business_hours !== memo_v2.business_hours) {\n  changes.push(\"Business hours updated\");\n}\n\nif (JSON.stringify(memo_v1.services_supported) !== JSON.stringify(memo_v2.services_supported)) {\n  changes.push(\"Services supported updated\");\n}\n\nif (JSON.stringify(memo_v1.emergency_definition) !== JSON.stringify(memo_v2.emergency_definition)) {\n  changes.push(\"Emergency definitions updated\");\n}\n\nconst changelog = {\n  account_id: $json.account_id,\n  version_from: \"v1\",\n  version_to: \"v2\",\n  changes,\n  updated_at: new Date().toISOString()\n};\n\nreturn [{\n  ...$json,\n  changelog\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4368,
+        16
+      ],
+      "id": "47219aec-325d-48e3-93b2-09f0abe66acb",
+      "name": "Generate Changelog"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = Buffer.from(JSON.stringify($json.changelog, null, 2));\n\nreturn [{\n  json: $json,\n  binary: {\n    data: {\n      data,\n      mimeType: \"application/json\",\n      fileName: `changelog.json`\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4576,
+        16
+      ],
+      "id": "72eac46d-604b-4b02-9394-2505a6a6616e",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/home/node/files/outputs/accounts/bens/changelog/changelog.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        4784,
+        16
+      ],
+      "id": "9ec27fda-23c5-4724-836d-d79d9a13a39e",
+      "name": "Read/Write Files from Disk6"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = Buffer.from(JSON.stringify($json.memo, null, 2));\n\nreturn [{\n  binary: {\n    data: {\n      data,\n      mimeType: \"application/json\",\n      fileName: \"memo.json\"\n    }\n  },\n  json: $json\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        32
+      ],
+      "id": "80425e2a-f855-4ef0-bc0f-c839e56ce495",
+      "name": "Prepare memo file"
+    },
+    {
+      "parameters": {
+        "jsCode": "const agent_spec = {\n  agent_name: `Clara - ${$json.account_id}`,\n  voice_style: \"professional\",\n  version: \"v1\",\n\n  system_prompt: `\nYou are Clara, an AI voice assistant for service businesses.\n\nBUSINESS HOURS FLOW\n1. Greet the caller professionally.\n2. Ask the purpose of the call.\n3. Collect caller name and phone number.\n4. Route or transfer if needed.\n5. If transfer fails, apologize and assure follow-up.\n6. Ask if they need anything else.\n7. Close the call politely.\n\nAFTER HOURS FLOW\n1. Greet the caller.\n2. Ask the purpose of the call.\n3. Determine if it is an emergency.\n4. If emergency:\n   - collect name\n   - phone number\n   - service address\n   - attempt transfer\n5. If transfer fails:\n   - apologize\n   - assure quick follow-up.\n6. If non-emergency:\n   - collect service details\n   - confirm follow-up during business hours.\n7. Ask if they need anything else.\n8. Close the call.\n`,\n\n  call_transfer_protocol: \"Transfer to service dispatch if emergency.\",\n  fallback_protocol: \"If transfer fails after 60 seconds notify dispatch.\",\n  timezone: \"\",\n  business_hours: \"\"\n};\n\nreturn [\n{\n  ...$json,\n  agent_spec\n}\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        -16
+      ],
+      "id": "f63e1a15-e06d-477c-9c4a-0280c269e607",
+      "name": "Generate Agent Spec v1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Extract Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Fields": {
+      "main": [
+        [
+          {
+            "node": "Generate Memo JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Memo JSON": {
+      "main": [
+        [
+          {
+            "node": "Prepare memo file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Agent Spec": {
+      "main": [
+        []
+      ]
+    },
+    "Read/Write Files from Disk1": {
+      "main": [
+        [
+          {
+            "node": "Generate Agent Spec v1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Agent File": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk3": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk2": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Memo v1": {
+      "main": [
+        [
+          {
+            "node": "Extract Onboarding Updates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Parse Memo v1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Onboarding Updates": {
+      "main": [
+        [
+          {
+            "node": "Create Memo v2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Memo v2": {
+      "main": [
+        [
+          {
+            "node": "Generate Agent Spec v2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Agent Spec v2": {
+      "main": [
+        [
+          {
+            "node": "Save Memo v2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk4": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Memo v2": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk5": {
+      "main": [
+        [
+          {
+            "node": "Generate Changelog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Changelog": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare memo file": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Agent Spec v1": {
+      "main": [
+        [
+          {
+            "node": "Prepare Agent File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "e0c1163d-0c41-41f9-b89a-dba4a5a60665",
+  "meta": {
+    "instanceId": "47a0bce8a4d2f238d3146ba5f77ba70d926c0c320c63bc6bb1497c8da24166d4"
+  },
+  "id": "m7fpFxqFpEIBkr0q",
+  "tags": []
+}
