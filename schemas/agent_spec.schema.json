@@ -1,0 +1,9 @@
+{
+  "agent_name": "",
+  "version": "",
+  "voice_style": "neutral",
+  "system_prompt": "",
+  "variables": {},
+  "call_transfer_protocol": {},
+  "fallback_protocol": {}
+}

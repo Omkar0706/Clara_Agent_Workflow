@@ -1,0 +1,21 @@
+{
+  "account_id": "bens",
+  "company_name": "",
+  "business_hours": "",
+  "office_address": "",
+  "services_supported": [],
+  "emergency_definition": [],
+  "emergency_routing_rules": "",
+  "non_emergency_routing_rules": "",
+  "call_transfer_rules": "",
+  "integration_constraints": "",
+  "after_hours_flow_summary": "",
+  "office_hours_flow_summary": "",
+  "questions_or_unknowns": [
+    "Business hours not specified",
+    "Emergency routing unclear"
+  ],
+  "notes": "speaker 1: 00:00 \r\n all right, we'll let ben in now in three, two, one. and he's in.\r\n\r\nspeaker 2: 00:16 \r\n hey, ben, can you hear me?\r\n\r\nspeaker 3: 00:22 \r\n wait, can you hear me? yeah.\r\n\r\nspeaker 2:",
+  "version": "v2",
+  "updated_at": "2026-03-05T14:16:32.493Z"
+}
